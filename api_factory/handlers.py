@@ -124,12 +124,12 @@ class Auth0Authenticator:
         # Auth0 audience (used to verify the JWT)
         self.JWT_AUDIENCE = os.environ['AUDIENCE']
 
-    def process_request(self, data: Dict):
+    def process_method(self, data: Dict):
         # process the authentication if the method requires it
         if self.authentication:
             self.setup_requesting_user(data.get('header', {}))
 
-        return super(Auth0Authenticator, self).process_request(data)
+        return super(Auth0Authenticator, self).process_method(data)
 
     def setup_requesting_user(self, headers: Dict):
         """ Setup requesting user using JWT from the headers.
