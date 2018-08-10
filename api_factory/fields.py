@@ -60,6 +60,13 @@ class StringField(BaseField):
         return value
 
 
+class BooleanField(BaseField):
+
+    def custom_validation(self, value):
+        value = bool(value)
+        return value
+
+
 class NumericField(BaseField):
 
     # abstract property to set the expected data type

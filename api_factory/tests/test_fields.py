@@ -1,6 +1,6 @@
 import unittest
 
-from ..fields import StringField, FloatField, IntegerField, ListField
+from ..fields import StringField, FloatField, IntegerField, ListField, BooleanField
 from ..exceptions import FieldValidationError
 
 
@@ -33,6 +33,12 @@ class TestFields(unittest.TestCase):
         self.assert_validation_error(field, '123456')
         self.assertEqual(field.validate('123'), '123')
         self.assertEqual(field.validate('12345'), '12345')
+
+    def test_boolean_field(self):
+        field = BooleanField()
+        self.assertTrue(field.validate(True))
+        self.assertFalse(field.validate(False))
+        self.assertTrue(field.validate('qwe'))
 
     def test_float_field(self):
         field = FloatField(min_value=3, max_value=5)
