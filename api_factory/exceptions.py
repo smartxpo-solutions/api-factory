@@ -11,12 +11,17 @@ class ServerError(Exception):
 
 
 class PermissionsError(ClientError):
-    def __init__(self, user_id, action):
+    def __init__(self, user_id=None, action=None):
         self.user_id = user_id
         self.action = action
 
     def __str__(self):
-        return 'permission denied for the user [%s] to perform the action [%s]' % (self.user_id, self.action)
+        err = 'permission denied'
+        if self.user_id:
+            err += ' for the user [%s]' % self.user_id
+        if self.action:
+            err += ' to perform the action [%s]' % self.action
+        return err
 
 
 class RequiredFieldError(ClientError):

@@ -1,5 +1,7 @@
 import os
 import jwt
+import json
+import boto3
 import base64
 import logging
 
@@ -176,3 +178,17 @@ class Auth0Authenticator:
 
 # helper class, combines common functional
 BaseHandler = type('BaseHandler', (Auth0Authenticator, LambdaHandler), {})
+
+
+class AuthHandler(BaseHandler):
+
+    # client to call lambda directly
+    lambda_client = boto3.client('lambda')
+
+    def authorize(self, **payload):
+        response = self.lambda_client.invoke(FunctionName=os.environ['AUTHORIZER_FUNC'],
+                                             InvocationType='RequestResponse',
+                                             Payload=json.dumps(payload))
+        response = response['Payload'].read()
+        if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
+            raise PermissionsError()
