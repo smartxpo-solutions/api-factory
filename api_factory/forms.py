@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 
 from .exceptions import InvalidValueError, RequiredFieldError, ServerError, FieldValidationError
-from .fields import BaseField
+from .fields import BaseField, SubformField, ListSubformField, DictSubformField
 
 
 class FormsMeta(type):
@@ -57,12 +57,34 @@ class BaseOutputForm(metaclass=FormsMeta):
         processed_data = {}
 
         for key, field in cls.fields:
-            value = output_data.get(key)
+            if field.key_map:
+                value = output_data.get(field.key_map)
+            else:
+                value = output_data.get(key)
 
-            # validate field value
-            try:
-                processed_data[key] = field.validate(value)
-            except FieldValidationError as e:
-                raise ServerError('invalid value [%s=%s] %s' % (key, value, str(e)))
+            if isinstance(field, DictSubformField):
+                if value is None:
+                    processed_data[key] = None
+                else:
+                    processed_data[key] = {k: field.subform.process_form(v) for k, v in value.items()}
+
+            elif isinstance(field, ListSubformField):
+                if value is None:
+                    processed_data[key] = []
+                else:
+                    processed_data[key] = [field.subform.process_form(row) for row in value]
+
+            elif isinstance(field, SubformField):
+                if value is None:
+                    processed_data[key] = None
+                else:
+                    processed_data[key] = field.subform.process_form(value)
+
+            else:
+                # validate field value
+                try:
+                    processed_data[key] = field.validate(value)
+                except FieldValidationError as e:
+                    raise ServerError('invalid value [%s=%s] %s' % (key, value, str(e)))
 
         return processed_data

@@ -1,7 +1,7 @@
 import unittest
 
 from ..forms import BaseInputForm, BaseOutputForm
-from ..fields import StringField, IntegerField
+from ..fields import StringField, IntegerField, SubformField, DictSubformField, ListSubformField
 from ..exceptions import RequiredFieldError, InvalidValueError, ServerError
 
 
@@ -52,18 +52,27 @@ class TestInputForms(unittest.TestCase):
 
 class TestOutputForms(unittest.TestCase):
 
+    def test_key_map(self):
+        class TestForm(BaseOutputForm):
+            email = StringField(key_map='user_email')
+            age = IntegerField()
+
+        output_data = TestForm.process({'age': 2, 'user_email': 'qwe@gmail.com'})
+        expected_data = {'age': 2, 'email': 'qwe@gmail.com'}
+        self.assertDictEqual(output_data, expected_data)
+
     def test_output_formats(self):
 
         class TestForm(BaseOutputForm):
             email = StringField()
 
-        input_data = TestForm.process({'email': 'qwe@gmail.com'})
+        output_data = TestForm.process({'email': 'qwe@gmail.com'})
         expected_data = {'email': 'qwe@gmail.com'}
-        self.assertEqual(input_data, expected_data)
+        self.assertEqual(output_data, expected_data)
 
-        input_data = TestForm.process([{'email': 'qwe@gmail.com'}, {'email': 'asd@gmail.com'}])
+        output_data = TestForm.process([{'email': 'qwe@gmail.com'}, {'email': 'asd@gmail.com'}])
         expected_data = [{'email': 'qwe@gmail.com'}, {'email': 'asd@gmail.com'}]
-        self.assertEqual(input_data, expected_data)
+        self.assertEqual(output_data, expected_data)
 
     def test_output_errors(self):
 
@@ -83,3 +92,63 @@ class TestOutputForms(unittest.TestCase):
         TestForm.process({'email': '12345', 'age': 2})
         TestForm.process({'age': 2})
         TestForm.process({'email': '12345'})
+
+    def test_subform_field(self):
+
+        class TestSuborm(BaseOutputForm):
+            email = StringField()
+
+        class TestForm(BaseOutputForm):
+            user = SubformField(TestSuborm)
+
+        output_data = TestForm.process({'user': {'email': 'qwe@gmail.com'}})
+        expected_data = {'user': {'email': 'qwe@gmail.com'}}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'user': {}})
+        expected_data = {'user': {'email': None}}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'user': None})
+        expected_data = {'user': None}
+        self.assertDictEqual(output_data, expected_data)
+
+    def test_dict_subform_field(self):
+
+        class TestSuborm(BaseOutputForm):
+            email = StringField()
+
+        class TestForm(BaseOutputForm):
+            users = DictSubformField(TestSuborm)
+
+        output_data = TestForm.process({'users': {'Mike': {'email': 'qwe@gmail.com'}}})
+        expected_data = {'users': {'Mike': {'email': 'qwe@gmail.com'}}}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'users': {}})
+        expected_data = {'users': {}}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'users': None})
+        expected_data = {'users': None}
+        self.assertDictEqual(output_data, expected_data)
+
+    def test_list_subform_field(self):
+
+        class TestSuborm(BaseOutputForm):
+            email = StringField()
+
+        class TestForm(BaseOutputForm):
+            users = ListSubformField(TestSuborm)
+
+        output_data = TestForm.process({'users': [{'email': 'qwe@gmail.com'}]})
+        expected_data = {'users': [{'email': 'qwe@gmail.com'}]}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'users': []})
+        expected_data = {'users': []}
+        self.assertDictEqual(output_data, expected_data)
+
+        output_data = TestForm.process({'users': None})
+        expected_data = {'users': []}
+        self.assertDictEqual(output_data, expected_data)

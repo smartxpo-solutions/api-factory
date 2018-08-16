@@ -186,9 +186,12 @@ class AuthHandler(BaseHandler):
     lambda_client = boto3.client('lambda')
 
     def authorize(self, **payload):
-        response = self.lambda_client.invoke(FunctionName=os.environ['AUTHORIZER_FUNC'],
-                                             InvocationType='RequestResponse',
-                                             Payload=json.dumps(payload))
+        response = self.call_lambda(name=os.environ['AUTHORIZER_FUNC'], payload=json.dumps(payload))
         response = response['Payload'].read()
         if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
             raise PermissionsError()
+
+    def call_lambda(self, name: str, payload=None, invocation_type='RequestResponse'):
+        return self.lambda_client.invoke(FunctionName=name,
+                                         InvocationType=invocation_type,
+                                         Payload=payload)

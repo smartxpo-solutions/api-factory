@@ -16,10 +16,11 @@ class BaseField(metaclass=abc.ABCMeta):
     # field doc string
     help: Optional[str]
 
-    def __init__(self, *, required: bool=False, default=None, help: str=None):
+    def __init__(self, *, required: bool=False, default=None, help: str=None, key_map: str=None):
         self.required = required
         self.default = default
         self.help = help
+        self.key_map = key_map
 
     def validate(self, value):
         if not self.required:
@@ -139,3 +140,21 @@ class ListField(BaseField):
                 raise FieldValidationError("not allowed values: %s" % unexpected_values)
 
         return values
+
+
+class SubformField(BaseField):
+
+    def __init__(self, subform, **kwargs):
+        super(SubformField, self).__init__(**kwargs)
+        self.subform = subform
+
+    def custom_validation(self, value):
+        return value
+
+
+class DictSubformField(SubformField):
+    pass
+
+
+class ListSubformField(SubformField):
+    pass
