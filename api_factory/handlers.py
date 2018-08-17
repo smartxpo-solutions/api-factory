@@ -144,6 +144,9 @@ class Auth0Authenticator:
             logger.warning('JWT is missing')
             raise AuthenticationError()
 
+        # XXX: temporary
+        token = token.strip('Bearer ')
+
         # TODO: add more meaningful logging to catch suspicious requests
         try:
             # get a public key out from certificate key
@@ -191,7 +194,6 @@ class AuthHandler(BaseHandler):
         if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
             raise PermissionsError()
 
-    def call_lambda(self, name: str, payload=None, invocation_type='RequestResponse'):
-        return self.lambda_client.invoke(FunctionName=name,
-                                         InvocationType=invocation_type,
-                                         Payload=payload)
+    def call_lambda(self, name: str, payload=None):
+        response = self.lambda_client.invoke(FunctionName=name, InvocationType='RequestResponse', Payload=payload)
+        return json.loads(response['Payload'].read())
