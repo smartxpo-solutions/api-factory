@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="api_factory",
-    version="0.1.5",
+    version="0.1.6.14",
     author="SmartXpo Solutions Limited",
     author_email="info@smartxpo.com",
     description="",

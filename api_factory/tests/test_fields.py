@@ -1,6 +1,6 @@
 import unittest
 
-from ..fields import StringField, FloatField, IntegerField, ListField, BooleanField
+from ..fields import StringField, FloatField, IntegerField, ListField, BooleanField, DictField
 from ..exceptions import FieldValidationError
 
 
@@ -74,6 +74,12 @@ class TestFields(unittest.TestCase):
         self.assert_validation_error(field, 123)
         self.assert_validation_error(field, ['1q'])
         self.assertEqual(field.validate(['1', '1.1', 2, 3.3]), [1, 1.1, 2, 3.3])
+
+    def test_dict_field(self):
+        field = DictField(StringField)
+        self.assert_validation_error(field, 123)
+        self.assert_validation_error(field, 'abc')
+        self.assertEqual(field.validate({'a': 'b'}), {'a': 'b'})
 
     def test_blank_list_field(self):
         field = ListField(StringField, blank=True)

@@ -42,6 +42,9 @@ RequestingUser = namedtuple('RequestingUser', ['email'])
 class LambdaHandler:
     """ Describes the common pattern of an API methods. Designed specifically for AWS Lambda. """
 
+    # event data
+    event: Optional[Dict] = None
+
     # method description
     help: str = None
 
@@ -59,16 +62,26 @@ class LambdaHandler:
         """ Creates an entry point for AWS Lambda function """
 
         def _handler(event, context):
-            return cls().handle_request(event)
+            response = cls().handle_request(event)
+
+            headers = event.get('headers') or {}
+            headers['Access-Control-Allow-Origin'] = '*'
+            return {
+                'isBase64Encoded': False,
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps(response)
+            }
 
         return _handler
 
     def process_method(self, data: Dict):
         """ Process the input data according to the custom method """
 
+        self.input_data = data.get('queryStringParameters') or {}
         # process the request data if input form added
         if self.input_form is not None:
-            self.input_data = self.input_form.process(data)
+            self.input_data = self.input_form.process(self.input_data)
 
         # run custom method handler
         response_data = self.handler()
@@ -79,11 +92,13 @@ class LambdaHandler:
 
         return response_data
 
-    def handle_request(self, data):
+    def handle_request(self, event):
         """ Process the request and handle the response errors """
 
+        self.event = event
+
         try:
-            response_data = self.process_method(data)
+            response_data = self.process_method(event)
             return success_response(response_data)
 
         except PermissionsError as e:
@@ -129,7 +144,7 @@ class Auth0Authenticator:
     def process_method(self, data: Dict):
         # process the authentication if the method requires it
         if self.authentication:
-            self.setup_requesting_user(data.get('header', {}))
+            self.setup_requesting_user(data.get('headers') or {})
 
         return super(Auth0Authenticator, self).process_method(data)
 
@@ -139,13 +154,13 @@ class Auth0Authenticator:
         """
 
         # check if user authenticated
-        token = headers.get('Authenticate')
+        token = headers.get('Authorization')
         if not token:
             logger.warning('JWT is missing')
             raise AuthenticationError()
 
         # XXX: temporary
-        token = token.strip('Bearer ')
+        token = token.replace('Bearer ', '')
 
         # TODO: add more meaningful logging to catch suspicious requests
         try:
@@ -189,11 +204,17 @@ class AuthHandler(BaseHandler):
     lambda_client = boto3.client('lambda')
 
     def authorize(self, **payload):
-        response = self.call_lambda(name=os.environ['AUTHORIZER_FUNC'], payload=json.dumps(payload))
-        response = response['Payload'].read()
+        response = self.call_lambda(name=os.environ['AUTHORIZER_FUNC'], payload=payload)
         if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
             raise PermissionsError()
 
-    def call_lambda(self, name: str, payload=None):
-        response = self.lambda_client.invoke(FunctionName=name, InvocationType='RequestResponse', Payload=payload)
-        return json.loads(response['Payload'].read())
+    def call_lambda(self, name: str, payload: Dict=None):
+        event = {
+            'queryStringParameters': payload or {},
+            'headers': self.event.get('headers') or {}
+        }
+
+        response = self.lambda_client.invoke(
+            FunctionName=name, InvocationType='RequestResponse', Payload=json.dumps(event))
+        response = json.loads(response['Payload'].read())
+        return json.loads(response['body'])

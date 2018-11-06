@@ -1,6 +1,6 @@
 import abc
 
-from typing import Optional, List, Type, Set
+from typing import Optional, List, Type, Set, Dict
 
 from .exceptions import FieldValidationError
 
@@ -138,6 +138,32 @@ class ListField(BaseField):
             unexpected_values = set(values) - set(self.valid_values)
             if unexpected_values:
                 raise FieldValidationError("not allowed values: %s" % unexpected_values)
+
+        return values
+
+
+class DictField(BaseField):
+    field_type: Type[BaseField]
+    blank: bool
+
+    def __init__(self, field_type: Type[BaseField], *, blank: bool = True, **kwargs):
+        super(DictField, self).__init__(**kwargs)
+        self.field_type = field_type
+        self.blank = blank
+
+    def custom_validation(self, values) -> Dict:
+
+        if not isinstance(values, dict):
+            raise FieldValidationError('wrong data type')
+
+        try:
+            field_type_obj = self.field_type()
+            values = {key: field_type_obj.validate(val) for key, val in values.items()}
+        except TypeError:
+            raise FieldValidationError('wrong data type')
+
+        if not self.blank and not values:
+            raise FieldValidationError('the value is blank')
 
         return values
 
