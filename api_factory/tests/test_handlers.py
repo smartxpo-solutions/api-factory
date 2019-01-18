@@ -1,4 +1,5 @@
 import unittest
+import json
 
 from ..forms import BaseInputForm, BaseOutputForm
 from ..fields import StringField, IntegerField
@@ -22,14 +23,13 @@ class TestLambdaHandler(unittest.TestCase):
             def handler(self):
                 return {'age': len(self.input_data['email'])}
 
-
         lambda_handler = TestHandler.get_lambda_handler()
 
-        response = lambda_handler({'email': 'qwe@gmail.com'}, None)
+        response = json.loads(lambda_handler({'queryStringParameters': {'email': 'qwe@gmail.com'}}, None)['body'])
         expected_response = success_response({'age': 13})
         self.assertEqual(response, expected_response)
 
-        response = lambda_handler({}, None)
+        response = json.loads(lambda_handler({'queryStringParameters': {}}, None)['body'])
         self.assertEqual(response['status'], 'FAIL')
         self.assertEqual(response['status_code'], 400)
 
@@ -46,10 +46,10 @@ class TestLambdaHandler(unittest.TestCase):
             output_form = TestOutputForm
 
             def handler(self):
-                return {'age': 'qwe'}
+                return {'age': 'bad value'}
 
         lambda_handler = TestHandler.get_lambda_handler()
 
-        response = lambda_handler({'email': 'qwe@gmail.com'}, None)
+        response = json.loads(lambda_handler({'queryStringParameters': {'email': 'qwe@gmail.com'}}, None)['body'])
         self.assertEqual(response['status'], 'FAIL')
         self.assertEqual(response['status_code'], 500)

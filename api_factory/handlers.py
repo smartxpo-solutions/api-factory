@@ -12,9 +12,12 @@ from cryptography.hazmat.backends import default_backend
 
 from .forms import BaseInputForm, BaseOutputForm
 from .exceptions import PermissionsError, ClientError, ServerError, AuthenticationError
+from .logger import log_handler
 
 
-logger = logging.getLogger('lambda.auth')
+logger = logging.getLogger('api-factory')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(log_handler)
 
 
 def error_response(status_code, reason):
@@ -102,21 +105,21 @@ class LambdaHandler:
             return success_response(response_data)
 
         except PermissionsError as e:
-            logger.warning(e)
+            logger.warning({'message': 'permissions is not valid', 'reason': e})
             return error_response(403, str(e))
 
         except AuthenticationError as e:
-            logger.warning(e)
+            logger.error({'message': 'auth error', 'reason': e})
             return error_response(401, str(e))
 
         except ClientError as e:
-            logger.debug(e)
+            logger.debug({'message': 'client error', 'reason': e})
             return error_response(400, str(e))
 
         # if any unexpected error raised, treat it as a server error
         # all expected errors should be processed accordingly to their nature
         except (ServerError, Exception) as e:
-            logger.exception('unexpected error: %s' % e, exc_info=True)
+            logger.exception({'message': 'server error', 'reason': e}, exc_info=True)
             return error_response(500, 'server error')
 
     def handler(self) -> Dict:
@@ -156,7 +159,7 @@ class Auth0Authenticator:
         # check if user authenticated
         token = headers.get('Authorization')
         if not token:
-            logger.warning('JWT is missing')
+            logger.warning({'message': 'JWT is missing', 'reason': 'missing "Authorization" header'})
             raise AuthenticationError()
 
         # XXX: temporary
@@ -171,21 +174,21 @@ class Auth0Authenticator:
             token_payload = jwt.decode(token, public_key, verify=True, algorithms=['RS256'], audience=self.JWT_AUDIENCE)
 
         except jwt.InvalidSignatureError:
-            logger.warning('attempt to decode the wrong JWT')
+            logger.warning({'message': 'attempt to decode the wrong JWT'})
             raise AuthenticationError()
 
         except jwt.PyJWTError as e:
-            logger.warning('error while decoding the JWT: %s', e)
-            raise AuthenticationError()
-
-        email_verified = token_payload.get('email_verified')
-        if not email_verified:
-            logger.warning('user email is not verified')
+            logger.warning({'message': 'error while decoding the JWT', 'reason': e})
             raise AuthenticationError()
 
         user_email = token_payload.get('email')
         if not user_email:
-            logger.warning('user email is not found in the token payload')
+            logger.warning({'message': 'user email is not found in the JWT payload'})
+            raise AuthenticationError()
+
+        email_verified = token_payload.get('email_verified')
+        if not email_verified:
+            logger.warning({'message': 'user email is not verified'})
             raise AuthenticationError()
 
         # TODO: validate jwt expiration
@@ -204,9 +207,15 @@ class AuthHandler(BaseHandler):
     lambda_client = boto3.client('lambda')
 
     def authorize(self, **payload):
+        log_msg = dict(payload)
         response = self.call_lambda(name=os.environ['AUTHORIZER_FUNC'], payload=payload)
         if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
+            log_msg.update({'message': 'permissions is not valid', 'user_email': self.requesting_user.email})
+            logger.warning(log_msg)
             raise PermissionsError()
+
+        log_msg.update({'message': 'permissions is valid', 'user_email': self.requesting_user.email})
+        logger.info(log_msg)
 
     def call_lambda(self, name: str, payload: Dict=None):
         event = {
