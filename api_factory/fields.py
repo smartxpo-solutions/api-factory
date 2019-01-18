@@ -1,4 +1,5 @@
 import abc
+import json
 
 from typing import Optional, List, Type, Set, Dict
 
@@ -184,3 +185,13 @@ class DictSubformField(SubformField):
 
 class ListSubformField(SubformField):
     pass
+
+
+class JSONField(BaseField):
+
+    def custom_validation(self, value):
+        try:
+            value = json.loads(value)
+        except json.decoder.JSONDecodeError:
+            raise FieldValidationError('the value can\'t be decoded')
+        return value
