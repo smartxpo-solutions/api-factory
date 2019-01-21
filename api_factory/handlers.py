@@ -60,6 +60,9 @@ class LambdaHandler:
     # defined output form
     output_form: Type[BaseOutputForm] = None
 
+    # HTTP method name: GET, POST, etc
+    method = None
+
     @classmethod
     def get_lambda_handler(cls):
         """ Creates an entry point for AWS Lambda function """
@@ -81,7 +84,11 @@ class LambdaHandler:
     def process_method(self, data: Dict):
         """ Process the input data according to the custom method """
 
-        self.input_data = data.get('queryStringParameters') or {}
+        if self.method == 'GET':
+            self.input_data = data.get('queryStringParameters') or {}
+        else:
+            self.input_data = json.loads(data.get('body')) if data.get('body') else {}
+
         # process the request data if input form added
         if self.input_form is not None:
             self.input_data = self.input_form.process(self.input_data)

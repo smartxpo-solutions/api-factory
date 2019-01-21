@@ -17,6 +17,7 @@ class TestLambdaHandler(unittest.TestCase):
             age = IntegerField()
 
         class TestHandler(LambdaHandler):
+            method = 'GET'
             input_form = TestInputForm
             output_form = TestOutputForm
 
@@ -42,6 +43,7 @@ class TestLambdaHandler(unittest.TestCase):
             age = IntegerField()
 
         class TestHandler(LambdaHandler):
+            method = 'GET'
             input_form = TestInputForm
             output_form = TestOutputForm
 
@@ -53,3 +55,21 @@ class TestLambdaHandler(unittest.TestCase):
         response = json.loads(lambda_handler({'queryStringParameters': {'email': 'qwe@gmail.com'}}, None)['body'])
         self.assertEqual(response['status'], 'FAIL')
         self.assertEqual(response['status_code'], 500)
+
+    def test_post_method(self):
+
+        class TestInputForm(BaseInputForm):
+            email = StringField(required=True)
+
+        class TestHandler(LambdaHandler):
+            method = 'POST'
+            input_form = TestInputForm
+
+            def handler(self):
+                assert self.input_data['email'] == 'qwe@gmail.com'
+                return {}
+
+        lambda_handler = TestHandler.get_lambda_handler()
+
+        response = json.loads(lambda_handler({'body': json.dumps({'email': 'qwe@gmail.com'})}, None)['body'])
+        self.assertEqual(response['status'], 'OK')
