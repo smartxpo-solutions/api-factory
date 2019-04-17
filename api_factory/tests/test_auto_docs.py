@@ -21,7 +21,7 @@ class TestAutoDocs(TestCase):
         class SendEventReviewEmailInput(BaseInputForm):
             event_id = StringField(required=True, help='Event ID')
             edition_id = StringField(required=True, help='Edition ID')
-            emails = ListField(StringField, required=True, blank=False, help='Receivers')
+            emails = ListField(StringField, required=True, blank=False, help='Receivers', valid_values={'a', 'b'})
             body = StringField(required=True, min_length=5, help='Message body')
 
         class SendEventReviewEmailHandler(BaseHandler):
@@ -39,16 +39,28 @@ class TestAutoDocs(TestCase):
         expected_docs = {'description': 'Send a event review message to the event users',
                          'http_method': 'POST',
                          'input': {'body': {'description': 'Message body',
-                                            'details': {'max_length': None, 'min_length': 5},
+                                            'details': {'default': None,
+                                                        'max_length': None,
+                                                        'min_length': 5,
+                                                        'type': 'str'},
                                             'required': True},
                                    'edition_id': {'description': 'Edition ID',
-                                                  'details': {'max_length': None, 'min_length': None},
+                                                  'details': {'default': None,
+                                                              'max_length': None,
+                                                              'min_length': None,
+                                                              'type': 'str'},
                                                   'required': True},
                                    'emails': {'description': 'Receivers',
-                                              'details': {'blank': False, 'valid_values': None},
+                                              'details': {'blank': False,
+                                                          'default': None,
+                                                          'type': 'list[str]',
+                                                          'valid_values': {'a', 'b'}},
                                               'required': True},
                                    'event_id': {'description': 'Event ID',
-                                                'details': {'max_length': None, 'min_length': None},
+                                                'details': {'default': None,
+                                                            'max_length': None,
+                                                            'min_length': None,
+                                                            'type': 'str'},
                                                 'required': True}},
                          'output': {'is_sent': {'description': 'Was the letter sent?',
                                                 'details': {'default': None, 'type': 'bool'},
@@ -56,13 +68,17 @@ class TestAutoDocs(TestCase):
                                     'receivers': {'description': 'Receivers info',
                                                   'details': {'subform': {'email': {'description': 'Receiver '
                                                                                                    'email',
-                                                                                    'details': {'max_length': None,
-                                                                                                'min_length': None},
+                                                                                    'details': {'default': None,
+                                                                                                'max_length': None,
+                                                                                                'min_length': None,
+                                                                                                'type': 'str'},
                                                                                     'required': False},
                                                                           'name': {'description': 'Receiver '
                                                                                                   'name',
-                                                                                   'details': {'max_length': None,
-                                                                                               'min_length': None},
+                                                                                   'details': {'default': None,
+                                                                                               'max_length': None,
+                                                                                               'min_length': None,
+                                                                                               'type': 'str'},
                                                                                    'required': False}},
                                                               'type': 'subform'},
                                                   'required': False}}}
