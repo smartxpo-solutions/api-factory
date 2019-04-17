@@ -24,6 +24,8 @@ def get_field_type(field) -> str:
         return 'list subform'
     if isinstance(field, DictSubformField):
         return 'dict subform'
+    if isinstance(field, SubformField):
+        return 'subform'
 
 
 def get_field_info(field: BaseField) -> Dict:
@@ -34,9 +36,12 @@ def get_field_info(field: BaseField) -> Dict:
 
     details = {'type': get_field_type(field)}
     if isinstance(field, SubformField):
-        details['subform'] = get_field_info(field.subform)
+        details['subform'] = collect_forms_documentation(field.subform)
     else:
         details['default'] = field.default
+        # details['description'] = field.help
+        # details['required'] = field.required
+
         if isinstance(field, StringField):
             details = {'min_length': field.min_length, 'max_length': field.max_length}
         elif isinstance(field, NumericField):
