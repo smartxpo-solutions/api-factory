@@ -25,6 +25,7 @@ class TestAutoDocs(TestCase):
             body = StringField(required=True, min_length=5, help='Message body')
 
         class SendEventReviewEmailHandler(BaseHandler):
+            uri = 'notifications/review'
             help = 'Send a event review message to the event users'
             input_form = SendEventReviewEmailInput
             output_form = TestOutputForm
@@ -38,6 +39,8 @@ class TestAutoDocs(TestCase):
 
         expected_docs = {'description': 'Send a event review message to the event users',
                          'http_method': 'POST',
+                         'uri': 'notifications/review',
+                         'name': 'Send Event Review Email',
                          'input': {'body': {'description': 'Message body',
                                             'details': {'default': None,
                                                         'max_length': None,

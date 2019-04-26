@@ -1,3 +1,4 @@
+import re
 import inspect
 
 from typing import List, Dict
@@ -64,9 +65,17 @@ def collect_forms_documentation(form) -> Dict:
         return {key: get_field_info(field) for key, field in form.fields}
 
 
+def get_handler_name(handler):
+    name_chunks = re.findall('[A-Z][^A-Z]*', handler.__name__)
+    name_chunks.remove('Handler')
+    return ' '.join(name_chunks)
+
+
 def collect_documentation(handlers: List[BaseHandler]) -> List[Dict]:
     return [
         {
+            'uri': handler.uri,
+            'name': get_handler_name(handler),
             'http_method': handler.method,
             'description': handler.help,
             'input': collect_forms_documentation(handler.input_form),
