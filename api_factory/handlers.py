@@ -72,6 +72,13 @@ class LambdaHandler:
 
             headers = event.get('headers') or {}
             headers['Access-Control-Allow-Origin'] = '*'
+            headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubdomains; preload'
+            headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"
+            headers['X-Content-Type-Options'] = 'nosniff'
+            headers['X-Frame-Options'] = 'DENY'
+            headers['X-XSS-Protection'] = '1; mode=block'
+            headers['Referrer-Policy'] = 'same-origin'
+
             return {
                 'isBase64Encoded': False,
                 'statusCode': 200,
