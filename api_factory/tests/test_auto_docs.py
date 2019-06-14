@@ -1,9 +1,9 @@
 from unittest import TestCase
 
-from ..handlers import BaseHandler
-from ..forms import BaseInputForm, BaseOutputForm
-from ..fields import StringField, BooleanField, ListField, SubformField
-from ..auto_docs import collect_documentation
+from api_factory.handlers import BaseHandler
+from api_factory.forms import BaseInputForm, BaseOutputForm
+from api_factory.fields import StringField, BooleanField, ListField, SubformField
+from api_factory.auto_docs import collect_documentation
 
 
 class TestAutoDocs(TestCase):

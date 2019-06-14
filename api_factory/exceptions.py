@@ -45,3 +45,7 @@ class InvalidValueError(ClientError):
 class AuthenticationError(ClientError):
     def __str__(self):
         return 'authentication error'
+
+
+class Http404(Exception):
+    pass
