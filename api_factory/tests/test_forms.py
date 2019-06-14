@@ -1,8 +1,8 @@
 import unittest
 
-from ..forms import BaseInputForm, BaseOutputForm
-from ..fields import StringField, IntegerField, SubformField, DictSubformField, ListSubformField
-from ..exceptions import RequiredFieldError, InvalidValueError, ServerError
+from api_factory.forms import BaseInputForm, BaseOutputForm
+from api_factory.fields import StringField, IntegerField, SubformField, DictSubformField, ListSubformField
+from api_factory.exceptions import RequiredFieldError, InvalidValueError, ServerError
 
 
 class TestInputForms(unittest.TestCase):

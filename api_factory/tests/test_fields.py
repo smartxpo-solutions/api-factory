@@ -1,7 +1,7 @@
 import unittest
 
-from ..fields import StringField, FloatField, IntegerField, ListField, BooleanField, DictField
-from ..exceptions import FieldValidationError
+from api_factory.fields import StringField, FloatField, IntegerField, ListField, BooleanField, DictField
+from api_factory.exceptions import FieldValidationError
 
 
 class TestFields(unittest.TestCase):

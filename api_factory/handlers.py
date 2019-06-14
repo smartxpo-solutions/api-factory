@@ -10,10 +10,10 @@ from collections import namedtuple
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
 
+from api_factory import exceptions
+from api_factory.responses import Response, Http200Response, Http404Response
 from .forms import BaseInputForm, BaseOutputForm
-from .exceptions import PermissionsError, ClientError, ServerError, AuthenticationError
 from .logger import log_handler
-
 
 logger = logging.getLogger('api-factory')
 logger.setLevel(logging.DEBUG)
@@ -68,23 +68,24 @@ class LambdaHandler:
         """ Creates an entry point for AWS Lambda function """
 
         def _handler(event, context):
-            response = cls().handle_request(event)
-
             headers = event.get('headers') or {}
-            headers['Access-Control-Allow-Origin'] = '*'
-            headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubdomains; preload'
-            headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"
-            headers['X-Content-Type-Options'] = 'nosniff'
-            headers['X-Frame-Options'] = 'DENY'
-            headers['X-XSS-Protection'] = '1; mode=block'
-            headers['Referrer-Policy'] = 'same-origin'
 
-            return {
-                'isBase64Encoded': False,
-                'statusCode': 200,
-                'headers': headers,
-                'body': json.dumps(response)
-            }
+            response = cls().handle_request(event)
+            if not isinstance(response, Response):
+                response = Http200Response(response, headers=headers)
+
+            response.headers.update({
+                'Access-Control-Allow-Origin': '*',
+                'Strict-Transport-Security': 'max-age=63072000; includeSubdomains; preload',
+                'Content-Security-Policy': "default-src 'none'; img-src 'self'; script-src 'self'; "
+                                           "style-src 'self'; object-src 'none'",
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'DENY',
+                'X-XSS-Protection': '1; mode=block',
+                'Referrer-Policy': 'same-origin',
+            })
+
+            return response.to_aws_response()
 
         return _handler
 
@@ -118,21 +119,24 @@ class LambdaHandler:
             response_data = self.process_method(event)
             return success_response(response_data)
 
-        except PermissionsError as e:
+        except exceptions.PermissionsError as e:
             logger.warning({'message': 'permissions is not valid', 'reason': e})
             return error_response(403, str(e))
 
-        except AuthenticationError as e:
+        except exceptions.AuthenticationError as e:
             logger.error({'message': 'auth error', 'reason': e})
             return error_response(401, str(e))
 
-        except ClientError as e:
+        except exceptions.ClientError as e:
             logger.debug({'message': 'client error', 'reason': e})
             return error_response(400, str(e))
 
+        except exceptions.Http404 as e:
+            return Http404Response(str(e))
+
         # if any unexpected error raised, treat it as a server error
         # all expected errors should be processed accordingly to their nature
-        except (ServerError, Exception) as e:
+        except (exceptions.ServerError, Exception) as e:
             logger.exception({'message': 'server error', 'reason': e}, exc_info=True)
             return error_response(500, 'server error')
 
@@ -174,7 +178,7 @@ class Auth0Authenticator:
         token = headers.get('Authorization')
         if not token:
             logger.warning({'message': 'JWT is missing', 'reason': 'missing "Authorization" header'})
-            raise AuthenticationError()
+            raise exceptions.AuthenticationError()
 
         # XXX: temporary
         token = token.replace('Bearer ', '')
@@ -189,21 +193,21 @@ class Auth0Authenticator:
 
         except jwt.InvalidSignatureError:
             logger.warning({'message': 'attempt to decode the wrong JWT'})
-            raise AuthenticationError()
+            raise exceptions.AuthenticationError()
 
         except jwt.PyJWTError as e:
             logger.warning({'message': 'error while decoding the JWT', 'reason': e})
-            raise AuthenticationError()
+            raise exceptions.AuthenticationError()
 
         user_email = token_payload.get('email')
         if not user_email:
             logger.warning({'message': 'user email is not found in the JWT payload'})
-            raise AuthenticationError()
+            raise exceptions.AuthenticationError()
 
         email_verified = token_payload.get('email_verified')
         if not email_verified:
             logger.warning({'message': 'user email is not verified'})
-            raise AuthenticationError()
+            raise exceptions.AuthenticationError()
 
         # TODO: validate jwt expiration
         # TODO: validate jwt issuer
@@ -216,7 +220,6 @@ BaseHandler = type('BaseHandler', (Auth0Authenticator, LambdaHandler), {})
 
 
 class AuthHandler(BaseHandler):
-
     # client to call lambda directly
     lambda_client = boto3.client('lambda')
 
@@ -226,12 +229,12 @@ class AuthHandler(BaseHandler):
         if response['status'] == 'FAIL' or not response['body']['access_is_allowed']:
             log_msg.update({'message': 'permissions is not valid', 'user_email': self.requesting_user.email})
             logger.warning(log_msg)
-            raise PermissionsError()
+            raise exceptions.PermissionsError()
 
         log_msg.update({'message': 'permissions is valid', 'user_email': self.requesting_user.email})
         logger.info(log_msg)
 
-    def call_lambda(self, name: str, payload: Dict=None):
+    def call_lambda(self, name: str, payload: Dict = None):
         event = {
             'queryStringParameters': payload or {},
             'headers': self.event.get('headers') or {}

@@ -1,9 +1,10 @@
 import unittest
 import json
 
-from ..forms import BaseInputForm, BaseOutputForm
-from ..fields import StringField, IntegerField
-from ..handlers import LambdaHandler, success_response
+from api_factory.exceptions import Http404
+from api_factory.forms import BaseInputForm, BaseOutputForm
+from api_factory.fields import StringField, IntegerField
+from api_factory.handlers import LambdaHandler, success_response
 
 
 class TestLambdaHandler(unittest.TestCase):
@@ -73,3 +74,18 @@ class TestLambdaHandler(unittest.TestCase):
 
         response = json.loads(lambda_handler({'body': json.dumps({'email': 'qwe@gmail.com'})}, None)['body'])
         self.assertEqual(response['status'], 'OK')
+
+    def test_http404_method(self):
+        class TestHandler(LambdaHandler):
+            method = 'GET'
+
+            def handler(self):
+                raise Http404('Smth not found')
+
+        lambda_handler = TestHandler.get_lambda_handler()
+
+        response = lambda_handler({'queryStringParameters': {}}, None)
+
+        self.assertFalse(response['isBase64Encoded'])
+        self.assertEqual(response['statusCode'], 404)
+        self.assertEqual(json.loads(response['body']), {'message': 'Smth not found'})
