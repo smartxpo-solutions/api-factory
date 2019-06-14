@@ -117,6 +117,8 @@ class LambdaHandler:
 
         try:
             response_data = self.process_method(event)
+            if isinstance(response_data, Response):
+                return response_data
             return success_response(response_data)
 
         except exceptions.PermissionsError as e:
